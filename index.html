@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vibe – Social</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a23;
+    --surface2: #22222e;
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --text: #f0f0f5;
+    --muted: #888899;
+    --border: #2e2e3e;
+    --success: #4ade80;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 12px; flex-shrink: 0; }
+  .main { flex: 1; overflow-y: auto; }
+  .right-panel { width: 300px; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+
+  /* Sidebar */
+  .logo { font-size: 1.6rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 8px 12px 20px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: var(--radius-sm); cursor: pointer; color: var(--muted); font-size: .95rem; font-weight: 500; transition: all .15s; margin-bottom: 2px; }
+  .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--text); }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 1.2rem; width: 22px; text-align: center; }
+  .sidebar-bottom { margin-top: auto; }
+  .user-pill { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; background: var(--surface2); }
+  .user-pill:hover { background: var(--border); }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; color: #fff; }
+  .avatar.lg { width: 64px; height: 64px; font-size: 1.3rem; }
+  .avatar.sm { width: 28px; height: 28px; font-size: .7rem; }
+  .user-info { flex: 1; overflow: hidden; }
+  .user-name { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-handle { font-size: .75rem; color: var(--muted); }
+
+  /* Feed / Sections */
+  .section { display: none; }
+  .section.active { display: block; }
+  .feed-wrap { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Compose */
+  .compose-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+  .compose-row { display: flex; gap: 12px; align-items: flex-start; }
+  .compose-input { flex: 1; background: var(--surface2); border: none; border-radius: var(--radius-sm); padding: 12px; color: var(--text); font-size: .95rem; resize: none; outline: none; min-height: 72px; font-family: inherit; }
+  .compose-input::placeholder { color: var(--muted); }
+  .compose-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+  .compose-hints { display: flex; gap: 8px; }
+  .hint-btn { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background .15s; }
+  .hint-btn:hover { background: var(--surface2); color: var(--text); }
+  .post-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; color: #fff; font-weight: 700; padding: 9px 22px; border-radius: 20px; cursor: pointer; font-size: .9rem; transition: opacity .15s; }
+  .post-btn:hover { opacity: .85; }
+
+  /* Post Card */
+  .post-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; transition: border-color .15s; }
+  .post-card:hover { border-color: var(--accent); }
+  .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .post-meta { flex: 1; }
+  .post-name { font-weight: 700; font-size: .95rem; }
+  .post-handle { font-size: .8rem; color: var(--muted); }
+  .post-time { font-size: .78rem; color: var(--muted); }
+  .post-body { line-height: 1.6; margin-bottom: 14px; font-size: .97rem; word-break: break-word; }
+  .post-image { width: 100%; border-radius: var(--radius-sm); margin-bottom: 14px; max-height: 320px; object-fit: cover; background: var(--surface2); display: none; }
+  .post-actions { display: flex; gap: 4px; }
+  .action-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--muted); cursor: pointer; padding: 6px 12px; border-radius: 20px; font-size: .85rem; transition: all .15s; }
+  .action-btn:hover { background: var(--surface2); }
+  .action-btn.liked { color: var(--accent2); }
+  .action-btn.liked .action-icon { transform: scale(1.2); }
+  .action-icon { font-size: 1rem; transition: transform .2s; }
+  .comment-section { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
+  .comment-section.open { display: block; }
+  .comment-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .comment-input { flex: 1; background: var(--surface2); border: none; border-radius: 20px; padding: 8px 14px; color: var(--text); font-size: .85rem; outline: none; font-family: inherit; }
+  .comment-send { background: var(--accent); border: none; color: #fff; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .comment-send:hover { background: var(--accent2); }
+  .comment { display: flex; gap: 8px; margin-bottom: 8px; }
+  .comment-body { background: var(--surface2); border-radius: 12px; padding: 8px 12px; font-size: .85rem; flex: 1; }
+  .comment-author { font-weight: 600; font-size: .78rem; margin-bottom: 2px; color: var(--accent); }
+
+  /* Right Panel */
+  .panel-section { padding: 20px 16px; border-bottom: 1px solid var(--border); }
+  .panel-title { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+  .suggestion { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .follow-btn { margin-left: auto; background: var(--accent); border: none; color: #fff; font-size: .78rem; font-weight: 600; padding: 5px 14px; border-radius: 14px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+  .follow-btn:hover { background: var(--accent2); }
+  .follow-btn.following { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* Profile Section */
+  .profile-wrap { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+  .profile-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .profile-top { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .profile-stats { display: flex; gap: 24px; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 1.2rem; font-weight: 800; }
+  .stat-label { font-size: .75rem; color: var(--muted); }
+  .profile-bio { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+  .edit-profile-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-weight: 600; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: .88rem; transition: all .15s; }
+  .edit-profile-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Chat Section */
+  .chat-wrap { display: flex; height: 100%; }
+  .chat-list { width: 260px; border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 0; }
+  .chat-list-title { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 0 16px 12px; }
+  .chat-contact { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; transition: background .15s; }
+  .chat-contact:hover, .chat-contact.active { background: var(--surface2); }
+  .chat-contact-info { flex: 1; overflow: hidden; }
+  .chat-contact-name { font-weight: 600; font-size: .9rem; }
+  .chat-preview { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-badge { background: var(--accent); color: #fff; font-size: .65rem; font-weight: 700; border-radius: 10px; padding: 2px 7px; }
+  .chat-main { flex: 1; display: flex; flex-direction: column; }
+  .chat-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 70%; display: flex; flex-direction: column; }
+  .msg.mine { align-self: flex-end; align-items: flex-end; }
+  .msg.theirs { align-self: flex-start; align-items: flex-start; }
+  .msg-bubble { padding: 10px 14px; border-radius: 18px; font-size: .9rem; line-height: 1.5; word-break: break-word; }
+  .msg.mine .msg-bubble { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.theirs .msg-bubble { background: var(--surface2); border-bottom-left-radius: 4px; }
+  .msg-time { font-size: .7rem; color: var(--muted); margin-top: 3px; padding: 0 4px; }
+  .chat-input-row { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; background: var(--surface); }
+  .chat-input { flex: 1; background: var(--surface2); border: none; border-radius: 22px; padding: 10px 16px; color: var(--text); font-size: .9rem; outline: none; font-family: inherit; }
+  .chat-input::placeholder { color: var(--muted); }
+  .chat-send { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; color: #fff; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .chat-send:hover { opacity: .85; }
+
+  /* Notifs */
+  .notif-wrap { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+  .notif { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; }
+  .notif:hover { border-color: var(--accent); }
+  .notif-icon { font-size: 1.3rem; }
+  .notif-text { flex: 1; font-size: .9rem; line-height: 1.4; }
+  .notif-text strong { color: var(--accent); }
+  .notif-time { font-size: .75rem; color: var(--muted); }
+  .notif.unread { background: #1e1b2e; border-color: var(--accent); }
+
+  /* Explore */
+  .explore-wrap { max-width: 700px; margin: 0 auto; padding: 24px 16px; }
+  .search-bar { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 10px 16px; margin-bottom: 24px; }
+  .search-bar input { flex: 1; background: none; border: none; color: var(--text); font-size: .95rem; outline: none; font-family: inherit; }
+  .search-bar input::placeholder { color: var(--muted); }
+  .trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .trend-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color .15s; }
+  .trend-card:hover { border-color: var(--accent); }
+  .trend-tag { font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+  .trend-name { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+  .trend-count { font-size: .78rem; color: var(--muted); }
+
+  /* Page title */
+  .page-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .right-panel { display: none; }
+    .sidebar { width: 64px; }
+    .nav-item span, .logo, .user-info { display: none; }
+    .sidebar { padding: 16px 10px; align-items: center; }
+    .user-pill { padding: 8px; justify-content: center; }
+    .nav-item { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">Vibe</div>
+    <nav>
+      <div class="nav-item active" onclick="showSection('feed', this)"><span class="nav-icon">🏠</span><span>Home</span></div>
+      <div class="nav-item" onclick="showSection('explore', this)"><span class="nav-icon">🔍</span><span>Explore</span></div>
+      <div class="nav-item" onclick="showSection('notifs', this)"><span class="nav-icon">🔔</span><span>Notifications</span></div>
+      <div class="nav-item" onclick="showSection('chat', this)"><span class="nav-icon">💬</span><span>Messages</span></div>
+      <div class="nav-item" onclick="showSection('profile', this)"><span class="nav-icon">👤</span><span>Profile</span></div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-pill" onclick="showSection('profile', document.querySelectorAll('.nav-item')[4])">
+        <div class="avatar" id="me-avatar">ME</div>
+        <div class="user-info">
+          <div class="user-name" id="me-name">Alex Ray</div>
+          <div class="user-handle">@alexray</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Feed -->
+    <div class="section active" id="section-feed">
+      <div class="feed-wrap">
+        <div class="page-title">🏠 Home Feed</div>
+        <div class="compose-box">
+          <div class="compose-row">
+            <div class="avatar">ME</div>
+            <textarea class="compose-input" id="compose-text" placeholder="What's on your mind?"></textarea>
+          </div>
+          <div class="compose-actions">
+            <div class="compose-hints">
+              <button class="hint-btn" title="Photo">📷</button>
+              <button class="hint-btn" title="Emoji">😊</button>
+              <button class="hint-btn" title="Location">📍</button>
+            </div>
+            <button class="post-btn" onclick="createPost()">Post</button>
+          </div>
+        </div>
+        <div id="posts-container"></div>
+      </div>
+    </div>
+
+    <!-- Explore -->
+    <div class="section" id="section-explore">
+      <div class="explore-wrap">
+        <div class="page-title">🔍 Explore</div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" placeholder="Search Vibe..."/>
+        </div>
+        <div class="trend-grid" id="trends-grid"></div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="section" id="section-notifs">
+      <div class="notif-wrap">
+        <div class="page-title">🔔 Notifications</div>
+        <div id="notifs-container"></div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="section" id="section-chat" style="height:100vh;">
+      <div class="chat-wrap">
+        <div class="chat-list">
+          <div class="chat-list-title">Messages</div>
+          <div id="contacts-list"></div>
+        </div>
+        <div class="chat-main">
+          <div class="chat-header" id="chat-header">
+            <div class="avatar sm" id="chat-avatar">?</div>
+            <div><div class="user-name" id="chat-name">Select a conversation</div></div>
+          </div>
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chat-input" type="text" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()"/>
+            <button class="chat-send" onclick="sendMessage()">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div class="section" id="section-profile">
+      <div class="profile-wrap">
+        <div class="profile-header">
+          <div class="profile-top">
+            <div class="avatar lg">ME</div>
+            <div style="flex:1">
+              <div style="font-size:1.2rem;font-weight:800;margin-bottom:4px" id="profile-name">Alex Ray</div>
+              <div style="color:var(--muted);font-size:.9rem;margin-bottom:12px">@alexray</div>
+              <div class="profile-stats">
+                <div class="stat"><div class="stat-num" id="profile-posts">0</div><div class="stat-label">Posts</div></div>
+                <div class="stat"><div class="stat-num">142</div><div class="stat-label">Followers</div></div>
+                <div class="stat"><div class="stat-num">89</div><div class="stat-label">Following</div></div>
+              </div>
+            </div>
+            <button class="edit-profile-btn">Edit Profile</button>
+          </div>
+          <div class="profile-bio">✨ Living life one post at a time. Developer & coffee addict ☕ | Building cool things on the internet.</div>
+        </div>
+        <div id="my-posts-container"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Right Panel -->
+  <aside class="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">Suggested for you</div>
+      <div id="suggestions-panel"></div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-title">Trending topics</div>
+      <div id="trending-panel"></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// ── STATE ──
+const ME = { name: 'Alex Ray', handle: 'alexray', initials: 'ME' };
+
+const USERS = [
+  { id: 1, name: 'Jordan Lee', handle: 'jordanlee', initials: 'JL', color: '#7c5cfc' },
+  { id: 2, name: 'Sam Taylor', handle: 'samtaylor', initials: 'ST', color: '#fc5c7d' },
+  { id: 3, name: 'Morgan Kim', handle: 'morgankim', initials: 'MK', color: '#06b6d4' },
+  { id: 4, name: 'Riley Chen', handle: 'rileychen', initials: 'RC', color: '#f59e0b' },
+];
+
+let posts = [
+  { id: 1, user: USERS[0], text: 'Just shipped a massive feature today 🚀 Feeling incredible after months of hard work. The team absolutely crushed it!', time: '2m ago', likes: 24, liked: false, comments: [{ author: 'Morgan Kim', text: 'Congrats! 🎉' }] },
+  { id: 2, user: USERS[1], text: 'Hot take: dark mode is not a preference, it\'s a lifestyle 🌙', time: '15m ago', likes: 57, liked: false, comments: [] },
+  { id: 3, user: USERS[2], text: 'Coffee shop + lo-fi beats + coding = the perfect Sunday ✨ What\'s your productivity setup?', time: '1h ago', likes: 89, liked: false, comments: [{ author: 'Jordan Lee', text: 'Same energy! 🎵' }, { author: 'Riley Chen', text: 'Mine is exactly the same lol' }] },
+  { id: 4, user: USERS[3], text: 'Reminder that you\'re doing amazing and it\'s okay to take breaks 💙 Self-care is not a luxury.', time: '3h ago', likes: 213, liked: false, comments: [] },
+];
+
+let myPosts = [];
+let following = new Set([1, 3]);
+let activeChat = null;
+let chatMessages = {
+  1: [{ mine: false, text: 'Hey! How\'s it going?', time: '10:30 AM' }, { mine: true, text: 'Pretty good! Just working on some code 😄', time: '10:32 AM' }],
+  2: [{ mine: false, text: 'Did you see that new movie?', time: 'Yesterday' }],
+  3: [],
+  4: [{ mine: true, text: 'Love your posts! So inspiring 💙', time: '2 days ago' }, { mine: false, text: 'Thank you so much! ❤️', time: '2 days ago' }],
+};
+
+const trends = [
+  { tag: 'Technology', name: '#WebDev2026', count: '42.3K posts' },
+  { tag: 'Lifestyle', name: '#MorningRoutine', count: '28.1K posts' },
+  { tag: 'Entertainment', name: '#NowPlaying', count: '91.7K posts' },
+  { tag: 'Travel', name: '#Wanderlust', count: '55.4K posts' },
+  { tag: 'Food', name: '#FoodieLife', count: '33.8K posts' },
+  { tag: 'Tech', name: '#AITools', count: '18.5K posts' },
+];
+
+const notifs = [
+  { icon: '❤️', text: '<strong>Jordan Lee</strong> liked your post', time: '2m ago', unread: true },
+  { icon: '💬', text: '<strong>Sam Taylor</strong> commented: "Amazing!"', time: '10m ago', unread: true },
+  { icon: '👤', text: '<strong>Morgan Kim</strong> started following you', time: '1h ago', unread: true },
+  { icon: '🔁', text: '<strong>Riley Chen</strong> reposted your post', time: '3h ago', unread: false },
+  { icon: '❤️', text: '<strong>Sam Taylor</strong> liked your comment', time: '5h ago', unread: false },
+  { icon: '👤', text: '<strong>Jordan Lee</strong> mentioned you in a post', time: '1d ago', unread: false },
+];
+
+// ── RENDER ──
+function makeAvatar(user) {
+  return `<div class="avatar" style="background:linear-gradient(135deg,${user.color||'#7c5cfc'},${user.color2||'#fc5c7d'})">${user.initials}</div>`;
+}
+
+function renderPost(p, container) {
+  const el = document.createElement('div');
+  el.className = 'post-card';
+  el.id = 'post-' + p.id;
+  el.innerHTML = `
+    <div class="post-header">
+      <div class="avatar" style="background:linear-gradient(135deg,${p.user.color||'#7c5cfc'},#fc5c7d)">${p.user.initials}</div>
+      <div class="post-meta">
+        <div class="post-name">${p.user.name}</div>
+        <div class="post-handle">@${p.user.handle} · <span class="post-time">${p.time}</span></div>
+      </div>
+    </div>
+    <div class="post-body">${p.text}</div>
+    <div class="post-actions">
+      <button class="action-btn${p.liked?' liked':''}" onclick="toggleLike(${p.id})">
+        <span class="action-icon">${p.liked?'❤️':'🤍'}</span> <span id="likes-${p.id}">${p.likes}</span>
+      </button>
+      <button class="action-btn" onclick="toggleComments(${p.id})">
+        <span class="action-icon">💬</span> <span id="comment-count-${p.id}">${p.comments.length}</span>
+      </button>
+      <button class="action-btn" onclick="sharePost(${p.id})">
+        <span class="action-icon">🔁</span>
+      </button>
+      <button class="action-btn" onclick="bookmarkPost(${p.id})">
+        <span class="action-icon">🔖</span>
+      </button>
+    </div>
+    <div class="comment-section" id="comments-${p.id}">
+      <div class="comment-input-row">
+        <div class="avatar sm">ME</div>
+        <input class="comment-input" id="cinput-${p.id}" placeholder="Write a comment..." onkeydown="if(event.key==='Enter') addComment(${p.id})"/>
+        <button class="comment-send" onclick="addComment(${p.id})">➤</button>
+      </div>
+      <div id="comment-list-${p.id}">${p.comments.map(c=>`<div class="comment"><div class="avatar sm" style="background:var(--accent)">${c.author[0]}</div><div class="comment-body"><div class="comment-author">${c.author}</div>${c.text}</div></div>`).join('')}</div>
+    </div>`;
+  container.appendChild(el);
+}
+
+function renderFeed() {
+  const c = document.getElementById('posts-container');
+  c.innerHTML = '';
+  posts.forEach(p => renderPost(p, c));
+}
+
+function renderMyPosts() {
+  const c = document.getElementById('my-posts-container');
+  c.innerHTML = '';
+  if (myPosts.length === 0) {
+    c.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">No posts yet. Share something!</div>';
+  } else {
+    myPosts.forEach(p => renderPost(p, c));
+  }
+  document.getElementById('profile-posts').textContent = myPosts.length;
+}
+
+function renderSuggestions() {
+  const c = document.getElementById('suggestions-panel');
+  c.innerHTML = USERS.map(u => `
+    <div class="suggestion">
+      <div class="avatar sm" style="background:${u.color}">${u.initials}</div>
+      <div><div style="font-size:.88rem;font-weight:600">${u.name}</div><div style="font-size:.75rem;color:var(--muted)">@${u.handle}</div></div>
+      <button class="follow-btn${following.has(u.id)?' following':''}" id="follow-${u.id}" onclick="toggleFollow(${u.id})">${following.has(u.id)?'Following':'Follow'}</button>
+    </div>`).join('');
+}
+
+function renderTrending() {
+  const c = document.getElementById('trending-panel');
+  c.innerHTML = trends.slice(0,4).map(t => `
+    <div style="margin-bottom:12px;cursor:pointer">
+      <div style="font-size:.75rem;color:var(--muted)">${t.tag}</div>
+      <div style="font-weight:700;font-size:.9rem">${t.name}</div>
+      <div style="font-size:.75rem;color:var(--muted)">${t.count}</div>
+    </div>`).join('');
+}
+
+function renderTrends() {
+  const c = document.getElementById('trends-grid');
+  c.innerHTML = trends.map(t => `
+    <div class="trend-card">
+      <div class="trend-tag">${t.tag}</div>
+      <div class="trend-name">${t.name}</div>
+      <div class="trend-count">${t.count}</div>
+    </div>`).join('');
+}
+
+function renderNotifs() {
+  const c = document.getElementById('notifs-container');
+  c.innerHTML = notifs.map(n => `
+    <div class="notif${n.unread?' unread':''}">
+      <span class="notif-icon">${n.icon}</span>
+      <div class="notif-text">${n.text}</div>
+      <span class="notif-time">${n.time}</span>
+    </div>`).join('');
+}
+
+function renderContacts() {
+  const c = document.getElementById('contacts-list');
+  c.innerHTML = USERS.map(u => {
+    const msgs = chatMessages[u.id];
+    const last = msgs.length ? msgs[msgs.length-1].text : 'No messages yet';
+    const unread = u.id <= 2;
+    return `<div class="chat-contact${activeChat===u.id?' active':''}" onclick="openChat(${u.id})" id="contact-${u.id}">
+      <div class="avatar sm" style="background:${u.color}">${u.initials}</div>
+      <div class="chat-contact-info">
+        <div class="chat-contact-name">${u.name}</div>
+        <div class="chat-preview">${last.slice(0,30)}${last.length>30?'...':''}</div>
+      </div>
+      ${unread&&activeChat!==u.id?`<span class="chat-badge">1</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderChatMessages(userId) {
+  const c = document.getElementById('chat-messages');
+  const msgs = chatMessages[userId] || [];
+  c.innerHTML = msgs.length ? msgs.map(m => `
+    <div class="msg ${m.mine?'mine':'theirs'}">
+      <div class="msg-bubble">${m.text}</div>
+      <div class="msg-time">${m.time}</div>
+    </div>`).join('') : `<div style="color:var(--muted);text-align:center;padding:40px">No messages yet. Say hi! 👋</div>`;
+  c.scrollTop = c.scrollHeight;
+}
+
+// ── ACTIONS ──
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'profile') renderMyPosts();
+  if (name === 'notifs') renderNotifs();
+  if (name === 'chat') renderContacts();
+}
+
+function createPost() {
+  const txt = document.getElementById('compose-text').value.trim();
+  if (!txt) return;
+  const p = { id: Date.now(), user: { ...ME, color: '#7c5cfc', initials: 'ME' }, text: txt, time: 'just now', likes: 0, liked: false, comments: [] };
+  posts.unshift(p);
+  myPosts.unshift(p);
+  document.getElementById('compose-text').value = '';
+  renderFeed();
+  document.getElementById('profile-posts').textContent = myPosts.length;
+}
+
+function toggleLike(id) {
+  const p = posts.find(x => x.id === id) || myPosts.find(x => x.id === id);
+  if (!p) return;
+  p.liked = !p.liked;
+  p.likes += p.liked ? 1 : -1;
+  document.querySelectorAll(`#likes-${id}`).forEach(el => el.textContent = p.likes);
+  document.querySelectorAll(`#post-${id} .action-btn`).forEach((btn, i) => {
+    if (i === 0) {
+      btn.className = 'action-btn' + (p.liked ? ' liked' : '');
+      btn.querySelector('.action-icon').textContent = p.liked ? '❤️' : '🤍';
+    }
+  });
+}
+
+function toggleComments(id) {
+  const el = document.getElementById('comments-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+function addComment(id) {
+  const input = document.getElementById('cinput-' + id);
+  const txt = input.value.trim();
+  if (!txt) return;
+  const p = posts.find(x => x.id === id) || myPosts.find(x => x.id === id);
+  if (!p) return;
+  p.comments.push({ author: ME.name, text: txt });
+  const list = document.getElementById('comment-list-' + id);
+  if (list) {
+    const div = document.createElement('div');
+    div.className = 'comment';
+    div.innerHTML = `<div class="avatar sm" style="background:var(--accent)">M</div><div class="comment-body"><div class="comment-author">${ME.name}</div>${txt}</div>`;
+    list.appendChild(div);
+  }
+  document.querySelectorAll(`#comment-count-${id}`).forEach(el => el.textContent = p.comments.length);
+  input.value = '';
+}
+
+function sharePost(id) {
+  const btn = event.currentTarget;
+  btn.querySelector('.action-icon').textContent = '✅';
+  setTimeout(() => btn.querySelector('.action-icon').textContent = '🔁', 1200);
+}
+
+function bookmarkPost(id) {
+  const btn = event.currentTarget;
+  btn.querySelector('.action-icon').textContent = '✅';
+  setTimeout(() => btn.querySelector('.action-icon').textContent = '🔖', 1200);
+}
+
+function toggleFollow(id) {
+  if (following.has(id)) {
+    following.delete(id);
+  } else {
+    following.add(id);
+  }
+  const btn = document.getElementById('follow-' + id);
+  if (btn) {
+    btn.textContent = following.has(id) ? 'Following' : 'Follow';
+    btn.className = 'follow-btn' + (following.has(id) ? ' following' : '');
+  }
+}
+
+function openChat(userId) {
+  activeChat = userId;
+  const user = USERS.find(u => u.id === userId);
+  document.getElementById('chat-name').textContent = user.name;
+  document.getElementById('chat-avatar').textContent = user.initials;
+  document.getElementById('chat-avatar').style.background = user.color;
+  renderChatMessages(userId);
+  renderContacts();
+}
+
+function sendMessage() {
+  if (!activeChat) return;
+  const input = document.getElementById('chat-input');
+  const txt = input.value.trim();
+  if (!txt) return;
+  const now = new Date();
+  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  chatMessages[activeChat].push({ mine: true, text: txt, time });
+  input.value = '';
+  renderChatMessages(activeChat);
+  renderContacts();
+  // Simulate reply after delay
+  setTimeout(() => {
+    const replies = ['That\'s cool! 😊', 'Totally agree!', 'Haha nice!', 'Tell me more 👀', '❤️', 'lol fr', 'Interesting!'];
+    const reply = replies[Math.floor(Math.random() * replies.length)];
+    chatMessages[activeChat].push({ mine: false, text: reply, time });
+    renderChatMessages(activeChat);
+    renderContacts();
+  }, 1000 + Math.random() * 1500);
+}
+
+// ── INIT ──
+renderFeed();
+renderSuggestions();
+renderTrending();
+renderTrends();
+renderNotifs();
+renderContacts();
+</script>
+</body>
+</html>
